@@ -1,0 +1,22 @@
+{
+  "name": "bedrock-chatbot",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "BUILDKIT_INLINE_CACHE": "0"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "amazonwebservices.aws-toolkit-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install && cd frontend && npm install && npm run build",
+  "remoteUser": "node",
+  "workspaceFolder": "/workspaces/simplechat"
+}

@@ -79,7 +79,7 @@ export class BedrockChatbotStack extends cdk.Stack {
       }),
     });
 
-    // S3バケットの作成
+    // S3バケットの作成（ウェブサイト用）
     const websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -148,23 +148,26 @@ export class BedrockChatbotStack extends cdk.Stack {
       resources: ['*']
     }));
 
-    // Lambda function
+    // ファイル処理Lambda関数は削除（権限を超えるため）
+    
+    // メインチャットLambda関数（ファイル処理も含む）
     const chatFunction = new lambda.Function(this, 'ChatFunction', {
       runtime: lambda.Runtime.PYTHON_3_10,
       handler: 'index.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 128,
+      timeout: cdk.Duration.minutes(5), // ファイル処理のためタイムアウトを延長
+      memorySize: 1024, // メモリを増加
       role: lambdaRole,
       environment: {
         MODEL_ID: modelId,
+        // S3関連の環境変数は削除（S3を使用しないため）
       },
     });
 
-    // 明示的な依存関係を追加
+    // 明示的な依存関係を追加（非推奨メソッドを使用しない）
     const cfnChatFunction = chatFunction.node.defaultChild as lambda.CfnFunction;
     const cfnLambdaRole = lambdaRole.node.defaultChild as iam.CfnRole;
-    cfnChatFunction.addDependsOn(cfnLambdaRole);
+    cfnChatFunction.addDependency(cfnLambdaRole);
 
     // API Gateway with Cognito Authorizer
     const api = new apigateway.RestApi(this, 'ChatbotApi', {
@@ -185,6 +188,13 @@ export class BedrockChatbotStack extends cdk.Stack {
 
     const chatResource = api.root.addResource('chat');
     chatResource.addMethod('POST', new apigateway.LambdaIntegration(chatFunction), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    // ファイルアップロード用のエンドポイント（同じLambda関数を使用）
+    const uploadResource = api.root.addResource('upload');
+    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(chatFunction), {
       authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
@@ -387,10 +397,10 @@ export class BedrockChatbotStack extends cdk.Stack {
       },
     });
     
-    // 明示的な依存関係を追加
+    // 明示的な依存関係を追加（非推奨メソッドを使用しない）
     const cfnConfigFunction = configGeneratorFunction.node.defaultChild as lambda.CfnFunction;
     const cfnConfigRole = configGeneratorRole.node.defaultChild as iam.CfnRole;
-    cfnConfigFunction.addDependsOn(cfnConfigRole);
+    cfnConfigFunction.addDependency(cfnConfigRole);
     
     // カスタムリソースプロバイダー
     const configProvider = new cr.Provider(this, 'ConfigProvider', {
